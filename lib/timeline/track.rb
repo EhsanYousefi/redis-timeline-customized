@@ -2,27 +2,38 @@ module Timeline::Track
   extend ActiveSupport::Concern
 
   module ClassMethods
-    def track(name, options={})
-      @name = name
-      @callback = options.delete :on
-      @callback ||= :create
-      @actor = options.delete :actor
-      @actor ||= :creator
-      @actor_attributes = options.delete :actor_attributes
-      @object = options.delete :object
-      @object_attributes = options.delete :object_attributes
-      @target = options.delete :target
-      @target_attributes = options.delete :target_attributes
-      @followers = options.delete :followers
-      @followers ||= :followers
-      @mentionable = options.delete :mentionable
-      method_name = "track_#{@name}_after_#{@callback}".to_sym
-      define_activity_method method_name, actor: @actor,actor_attributes: @actor_attributes, object: @object, object_attributes: @object_attributes, target: @target,target_attributes: @target_attributes, followers: @followers, verb: name, mentionable: @mentionable
 
-      send "after_#{@callback}".to_sym, method_name, if: options.delete(:if)
+    def track(name, condition, options={})
+      if condition == true
+        @name = name
+        @callback = options.delete :on
+        @callback ||= :create
+        @actor = options.delete :actor
+        @actor ||= :creator
+        @actor_attributes = options.delete :actor_attributes
+        @object = options.delete :object
+        @object_attributes = options.delete :object_attributes
+        @target = options.delete :target
+        @target_attributes = options.delete :target_attributes
+        @followers = options.delete :followers
+        @followers ||= :followers
+        @mentionable = options.delete :mentionable
+        method_name = "track_#{@name}_after_#{@callback}".to_sym
+        define_activity_method method_name, actor: @actor,actor_attributes: @actor_attributes, object: @object, object_attributes: @object_attributes, target: @target,target_attributes: @target_attributes, followers: @followers, verb: name, mentionable: @mentionable
+
+        send "after_#{@callback}".to_sym, method_name, if: options.delete(:if)
+      end
     end
 
     private
+    def abort? param
+      if param == false
+        false
+      else
+        true
+      end
+    end
+
     def define_activity_method(method_name, options={})
       define_method method_name do
         @actor = send(options[:actor])
