@@ -3,26 +3,24 @@ module Timeline::Track
 
   module ClassMethods
 
-    def track(name, condition, options={})
-      if condition == true
-        @name = name
-        @callback = options.delete :on
-        @callback ||= :create
-        @actor = options.delete :actor
-        @actor ||= :creator
-        @actor_attributes = options.delete :actor_attributes
-        @object = options.delete :object
-        @object_attributes = options.delete :object_attributes
-        @target = options.delete :target
-        @target_attributes = options.delete :target_attributes
-        @followers = options.delete :followers
-        @followers ||= :followers
-        @mentionable = options.delete :mentionable
-        method_name = "track_#{@name}_after_#{@callback}".to_sym
-        define_activity_method method_name, actor: @actor,actor_attributes: @actor_attributes, object: @object, object_attributes: @object_attributes, target: @target,target_attributes: @target_attributes, followers: @followers, verb: name, mentionable: @mentionable
+    def track(name,options={})
+      @name = name
+      @callback = options.delete :on
+      @callback ||= :create
+      @actor = options.delete :actor
+      @actor ||= :creator
+      @actor_attributes = options.delete :actor_attributes
+      @object = options.delete :object
+      @object_attributes = options.delete :object_attributes
+      @target = options.delete :target
+      @target_attributes = options.delete :target_attributes
+      @followers = options.delete :followers
+      @followers ||= :followers
+      @mentionable = options.delete :mentionable
+      method_name = "track_#{@name}_after_#{@callback}".to_sym
+      define_activity_method method_name, actor: @actor,actor_attributes: @actor_attributes, object: @object, object_attributes: @object_attributes, target: @target,target_attributes: @target_attributes, followers: @followers, verb: name, mentionable: @mentionable
 
-        send "after_#{@callback}".to_sym, method_name, if: options.delete(:if)
-      end
+      send "after_#{@callback}".to_sym, method_name, if: options.delete(:if)
     end
 
     private
@@ -44,7 +42,7 @@ module Timeline::Track
         @target = !options[:target].nil? ? send(options[:target].to_sym) : nil
         @target_attributes = options[:target_attributes]
         @extra_fields ||= nil
-        @followers = @actor.send(options[:followers].to_sym)
+        @followers = prepare_followers(options[:followers])
         @mentionable = options[:mentionable]
         add_activity activity(verb: options[:verb],attr: {actor:@actor_attributes, object:@object_attributes, target:@target_attributes})
       end
@@ -137,5 +135,32 @@ module Timeline::Track
   def redis_add(list, activity_item)
     Timeline.redis.lpush list, Timeline.encode(activity_item)
   end
+
+  def extract_from_follower(param)
+    if param.is_a? Array
+      param.join '.'
+    else
+      param.to_s
+    end
+  end
+
+  def extract_class_from_follower(param)
+    if param.is_a? Array
+      param.first.to_s.capitalize.constantize
+    else
+      param.to_s.capitalize.constantize
+    end
+  end
+
+  def prepare_followers(param)
+    result = instance_eval(extract_from_follower(param))
+    if result.is_a?(Array)
+      result
+    else
+      [result]
+    end
+
+  end
+
 
 end
